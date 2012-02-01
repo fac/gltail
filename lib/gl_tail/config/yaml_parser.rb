@@ -32,23 +32,29 @@ module GlTail
     end
 
     def parse_servers
-
-      self.yaml['servers'].each do |server|
-
-        name = server.shift
-        data = server.shift
-
-        if data['source'] && data['source'].downcase == 'local'
-          src = GlTail::Source::Local.new(@config)
-        else 
-          src = GlTail::Source::SSH.new(@config)
+      if self.yaml['amqp']
+        self.yaml['amqp'].each_pair do |name,config|
+          @config.sources.concat GlTail::Source::AMQP.configure(name, config, @config)
         end
+      end
+      if self.yaml['servers']
+        self.yaml['servers'].each do |server|
         
-        src.name = name
-
-        apply_values(src, data)
-
-        @config.sources << src
+          name = server.shift
+          data = server.shift
+        
+          if data['source'] && data['source'].downcase == 'local'
+            src = GlTail::Source::Local.new(@config)
+          else 
+            src = GlTail::Source::SSH.new(@config)
+          end
+          
+          src.name = name
+        
+          apply_values(src, data)
+        
+          @config.sources << src
+        end
       end
     end
 
