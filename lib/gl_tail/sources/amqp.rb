@@ -47,11 +47,14 @@ module GlTail
         queue.bind('logs', :routing_key => '#')
 
         ret = queue.subscribe do |msg|
+
           payload = ActiveSupport::JSON.decode msg[:payload]
-          queues = @mutex.synchronize { @queues[payload['@type']] }
-          queues.each { |q| 
-            q.enq payload
-          } if queues
+          if payload["@source_host"] !=~ /puppet/
+            queues = @mutex.synchronize { @queues[payload['@type']] }
+            queues.each { |q| 
+              q.enq payload
+            } if queues
+          end
         end
       rescue 
         p $!

@@ -8,48 +8,63 @@
 class RailsParser < Parser
   def parse( line, metadata )
     
-    # Match: 'Started <method> "<uri>" for <ip> at <timestamp>' line
-    if line =~ /^Started (.*) \"([^\"]+)\" for ([0-9\.]+)/
-      method = $1
-      url = $2
-      ip = $3
-      
-      simple_url = url.gsub(/\d+/,"[num]").gsub(/\?.*$/,'')
-
-      add_activity(:block => 'users', :name => ip)
-      add_activity(:block => 'urls',   :name => "#{method} #{simple_url}")
+    metadata['@fields']['rails_rendered'] && metadata['@fields']['rails_rendered'].each do |template|
+      add_activity(:block => 'templates', :name => template["name"], :size => template["duration"]) # Size of activity based on request time.
     end
     
-    # Match: '  Processing by <controller>#<action> as <type>
-    if line =~ /Processing by ([^\#]+)#([^\s]+) as (.*)/
-      controller = $1
-      action = $2
-      type = $3
-      add_activity(:block => 'App Servers', :name => metadata['@source_host'])
-      
-      add_activity(:block => 'action', :name => "#{controller}##{action}")
-    end
-    
-    # Match: 'Finding company for subdomain [<subdomain>]
-    if line =~ /subdomain \[([^\]]+)\]/
-      subdomain = $1
-      puts subdomain
-      add_activity(:block => 'subdomain', :name => subdomain)
-    end
-    
-    # Match: Completed <code> <status> in <time>ms
-    if line =~ /Completed (.*) in ([\d\.]+)ms/
-      status = $1
-      time_ms = $2.to_f
-#      add_activity(:block => 'status', :name => status)
+    if metadata['@fields']['rails_remote_addr']
+      add_activity(:block => 'users', :name => metadata['@fields']['rails_remote_addr'])
     end
 
-    if controller == 'SessionsController' && action == 'create'
-      if line =~ /\"email\"=>\"([^\"]+)\"/
-        user = $1
-        add_event(:block => 'info', :name => "Login", :message => "#{user} [#{subdomain}] logged in", :update_stats => true, :color => [0.0, 1.0, 0.0, 1.0])
-      end
+    if metadata['@fields']['rails_subdomain']
+      add_activity(:block => 'subdomain', :name => metadata['@fields']['rails_subdomain'])
     end
+
+    if metadata['@fields']['rails_controller'] and metadata['@fields']['rails_action']
+      add_activity(:block => 'urls',   :name => "#{metadata['@fields']['rails_controller']}##{metadata['@fields']['rails_action']}")
+
+    end
+# #     # Match: 'Started <method> "<uri>" for <ip> at <timestamp>' line
+#     if line =~ /^Started (.*) \"([^\"]+)\" for ([0-9\.]+)/
+#       method = $1
+#       url = $2
+#       ip = $3
+      
+#       simple_url = url.gsub(/\d+/,"[num]").gsub(/\?.*$/,'')
+
+#       add_activity(:block => 'urls',   :name => "#{method} #{simple_url}")
+#     end
+#     
+#     # Match: '  Processing by <controller>#<action> as <type>
+#     if line =~ /Processing by ([^\#]+)#([^\s]+) as (.*)/
+#       controller = $1
+#       action = $2
+#       type = $3
+#       add_activity(:block => 'App Servers', :name => metadata['@source_host'])
+#       
+#       add_activity(:block => 'action', :name => "#{controller}##{action}")
+#     end
+#     
+#     # Match: 'Finding company for subdomain [<subdomain>]
+#     if line =~ /subdomain \[([^\]]+)\]/
+#       subdomain = $1
+#       puts subdomain
+#       add_activity(:block => 'subdomain', :name => subdomain)
+#     end
+#     
+#     # Match: Completed <code> <status> in <time>ms
+#     if line =~ /Completed (.*) in ([\d\.]+)ms/
+#       status = $1
+#       time_ms = $2.to_f
+# #      add_activity(:block => 'status', :name => status)
+#     end
+# 
+#     if controller == 'SessionsController' && action == 'create'
+#       if line =~ /\"email\"=>\"([^\"]+)\"/
+#         user = $1
+#         add_event(:block => 'info', :name => "Login", :message => "#{user} [#{subdomain}] logged in", :update_stats => true, :color => [0.0, 1.0, 0.0, 1.0])
+#       end
+#     end
 
   end
   #     
